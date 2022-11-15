@@ -92,6 +92,21 @@ class SparseWeights:
         self.__keys = keys
         self.__values = values
         self.__n_obs = n
+        self.__phi = phi
+
+    @property
+    def phi(self):
+        """Get or set the value for phi. Setting phi to a new value
+        automatically computes the new values for the weights."""
+        return self.__phi
+
+    @phi.setter
+    def phi(self, val):
+        # Input checks
+        _check_scalar(val, False, "phi")
+
+        # Set the new value
+        self.__phi = val
 
     def indices(self):
         """Return the indices of the nonzero weights.
@@ -120,7 +135,7 @@ class SparseWeights:
             The vector of weights.
 
         """
-        return self.__values.copy()
+        return np.exp(-self.__phi * self.__values)
 
     def to_dense(self):
         """Transform the sparse weight matrix into a dense weight matrix.
@@ -140,6 +155,6 @@ class SparseWeights:
 
         # Fill nonzero entries of the matrix
         for idx, w in zip(self.__keys, self.__values):
-            result[idx[0], idx[1]] = w
+            result[idx[0], idx[1]] = np.exp(-self.__phi * w)
 
         return result

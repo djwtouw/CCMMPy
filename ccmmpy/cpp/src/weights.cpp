@@ -83,7 +83,7 @@ pybind11::dict sparse_weights(const Eigen::MatrixXd& X,
     if (scale) {
         values /= msd;
     }
-    values = Eigen::exp(-phi * values);
+    // values = Eigen::exp(-phi * values);
 
     // Return result as a dictionary with all relevant variables
     pybind11::dict res;
