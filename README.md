@@ -1,6 +1,3 @@
-
-
-
 # CCMMPy
 CCMMPy implements convex clustering using the minimization algorithm presented in the paper _Convex Clustering through MM: An Efficient Algorithm to Perform Hierarchical Clustering_ by D.J.W. Touw, P.J.F. Groenen, and Y. Terada. For issues, please use [Github Issues](https://github.com/djwtouw/CCMMPy/issues).
 
@@ -12,6 +9,7 @@ There is also an [R package](https://github.com/djwtouw/CCMMR) available.
 	* [Example 1: Computation of a clusterpath](#example-1-computation-of-a-clusterpath)
 	* [Example 2: Connectedness of the weights](#example-2-connectedness-of-the-weights)
 	* [Example 3: Searching for a number of clusters](#example-3-searching-for-a-number-of-clusters)
+- [Dependencies and Licenses](#dependencies-and-licenses)
 
 ## Installation
 CCMMPy has the following dependencies:
@@ -137,3 +135,9 @@ A common way to visualize the result from a hierarchical clustering method is a 
 clust.plot_dendrogram()
 ```
 By default, $\lambda$ is scaled as $\ln(1+\lambda)$ (as denoted by `height_transformation="log"`), which generally improves the spacing between cluster fusions. Alternatives for `height_transformation` are `"sqrt"`, which takes the square root of $\lambda$, and `"none"`, which does not transform $\lambda$.
+
+## Dependencies and Licenses
+
+This project uses the Eigen C++ library for linear algebra operations, which is licensed under the [MPL2.0](https://www.mozilla.org/en-US/MPL/2.0/) license. The Eigen source files that are included in this repository can be found in the `ccmmpy/cpp/include/Eigen/` subdirectory. For more information about Eigen, including documentation and usage examples, please visit the [Eigen website](http://eigen.tuxfamily.org/).
+
+In addition, this project is licensed under the GNU General Public License version 3 (GPLv3). The GPLv3 is a widely-used free software license that requires derivative works to be licensed under the same terms. The full text of the GPLv3 can be found in the `ccmmpy/LICENSE` file.
