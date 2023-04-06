@@ -1,4 +1,8 @@
+
 # CCMMPy
+
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
 CCMMPy implements convex clustering using the minimization algorithm presented in the paper _Convex Clustering through MM: An Efficient Algorithm to Perform Hierarchical Clustering_ by D.J.W. Touw, P.J.F. Groenen, and Y. Terada. For issues, please use [Github Issues](https://github.com/djwtouw/CCMMPy/issues).
 
 There is also an [R package](https://github.com/djwtouw/CCMMR) available.
@@ -60,6 +64,8 @@ A clusterpath can be visualized in 2D with the next line of code. In this exampl
 # clusters
 clust.plot_clusterpath(n_clusters=4)
 ```
+<img src="./inst/doc/repo_plots/clusterpath_1.svg" width="67%" style="display: block; margin: auto;" />
+
 The value for `phi` can be changed on the fly: when setting it to a new value, the weight matrix is automatically updated. The same is true for `k` and `connected`. After running the following bit of code, we can see that the clusterpath is altered slightly in comparison to the previous clusterpath that was computed with `phi=3`.
 ```Python
 # Change phi
@@ -72,6 +78,8 @@ clust = CCMM(X, W).convex_clusterpath(lambdas)
 # clusters
 clust.plot_clusterpath(n_clusters=4)
 ```
+<img src="./inst/doc/repo_plots/clusterpath_2.svg" width="67%" style="display: block; margin: auto;" />
+
 To get a cluster membership vector for a particular number of clusters, there must be a $\lambda$ for which that number of clusters was found. The following line will raise an exception if the requested number of clusters is not available.
 ```Python
 # Get the cluster membership vector
@@ -102,14 +110,17 @@ In the following clusterpath the nonzero weights are drawn as dashed lines betwe
 # Plot the clusterpath and draw nonzero weights
 clust.plot_clusterpath(draw_nz_weights=True)
 ```
+<img src="./inst/doc/repo_plots/clusterpath_3.svg" width="50%" style="display: block; margin: auto;" />
+
 A scatter plot can also be drawn, which leaves out the clusterpath trails.
 ```Python
 # Scatter plot
 clust.scatter(n_clusters=2, draw_nz_weights=True)
 ```
+<img src="./inst/doc/repo_plots/scatter_1.svg" width="50%" style="display: block; margin: auto;" />
 
 ### Example 3: Searching for a number of clusters
-So far, the choice for $\lambda$ has determined what the number of clusters was going to be. However, it can be difficult to guess in advance what value for $\lambda$ corresponds to a particular number of clusters. The following code looks for clusterings in a specified range. If the lower and upper bound are equal, just a single clustering is looked for.
+So far, the choice for $\lambda$ has determined what the number of clusters was going to be. However, it can be difficult to guess in advance what value for $\lambda$ corresponds to a particular number of clusters. The following code looks for clusterings in a specified range. If the lower and upper bounds are equal, just a single clustering is looked for.
 ```Python
 # Generate a data set
 np.random.seed(2)
@@ -124,6 +135,8 @@ clust = CCMM(X, W).convex_clustering(target_low=2, target_high=2)
 # Scatter plot of the result
 clust.scatter(n_clusters=2)
 ```
+<img src="./inst/doc/repo_plots/scatter_2.svg" width="50%" style="display: block; margin: auto;" />
+
 Generally, this is not recommended, as convex clustering clusters observations by applying shrinkage, numerical inaccuracies may render some clusterings impossible to obtain. Adjusting the lower and upper bounds, we can search for all clusterings between one and ten.
 ```Python
 # Find all clusterings in the range [1, 10]
@@ -134,6 +147,8 @@ A common way to visualize the result from a hierarchical clustering method is a 
 # Plot the dendrogram
 clust.plot_dendrogram()
 ```
+<img src="./inst/doc/repo_plots/dendrogram_1.svg" width="67%" style="display: block; margin: auto;" />
+
 By default, $\lambda$ is scaled as $\ln(1+\lambda)$ (as denoted by `height_transformation="log"`), which generally improves the spacing between cluster fusions. Alternatives for `height_transformation` are `"sqrt"`, which takes the square root of $\lambda$, and `"none"`, which does not transform $\lambda$.
 
 ## Dependencies and Licenses

@@ -326,7 +326,7 @@ class CCMM:
 
     def plot_clusterpath(self, n_clusters=None, cluster_colors=None,
                          color_palette="husl", draw_nz_weights=False,
-                         default_labels=False):
+                         default_labels=False, return_figure=False):
         """Plot the clusterpath.
 
         Plots the clusterpath that resulted from minimizing the convex
@@ -363,10 +363,15 @@ class CCMM:
         default_labels : bool, optional
             If True, the observations will be labeled based on their index+1 in
             the data matrix X. The default is False.
+        return_figure : bool, optional
+            If True, return the figure. The result can be used to save the
+            figure. The default is False.
 
         Returns
         -------
-        None.
+        matplotlib.figure or None
+            If return_fig is True, the function returns the figure, otherwise
+            it returns None.
 
         """
         if not (self.__clusterpath and self.__save_clusterpath):
@@ -495,11 +500,20 @@ class CCMM:
         plt.yticks([])
         plt.ylabel("$x_2$")
         plt.gca().set_aspect("equal")
+
+        # Grab the figure
+        if return_figure:
+            fig = plt.gcf()
+
+        # Show the figure
         plt.show()
 
-        return None
+        # Return the figure
+        if return_figure:
+            return fig
 
-    def plot_dendrogram(self, height_transformation="log"):
+    def plot_dendrogram(self, height_transformation="log",
+                        return_figure=False):
         """Plot the clusterpath dendrogram.
 
         Plots the clusterpath dendrogram that resulted from minimizing the
@@ -515,10 +529,15 @@ class CCMM:
             The method to transform the height at which clusters fuse. There
             are three options: ln(lambda + 1), sqrt(lambda), and no
             transformation. The default is "log".
+        return_figure : bool, optional
+            If True, return the figure. The result can be used to save the
+            figure. The default is False.
 
         Returns
         -------
-        None.
+        matplotlib.figure or None
+            If return_fig is True, the function returns the figure, otherwise
+            it returns None.
 
         """
         if not (self.__clusterpath or self.__clustering):
@@ -610,12 +629,21 @@ class CCMM:
             plt.ylabel(r"$\sqrt{\lambda}$")
         else:
             plt.ylabel(r"$\lambda$")
+
+        # Grab the figure
+        if return_figure:
+            fig = plt.gcf()
+
+        # Show the figure
         plt.show()
 
-        return None
+        # Return the figure
+        if return_figure:
+            return fig
 
     def scatter(self, n_clusters, cluster_colors=None, color_palette="husl",
-                draw_nz_weights=False, default_labels=False):
+                draw_nz_weights=False, default_labels=False,
+                return_figure=False):
         """Plot a scatterplot.
 
         Visualizes a clustering of the data by drawing a 2D scatterplot in
@@ -648,10 +676,15 @@ class CCMM:
         default_labels : bool, optional
             If True, the observations will be labeled based on their index+1 in
             the data matrix X. The default is False.
+        return_figure : bool, optional
+            If True, return the figure. The result can be used to save the
+            figure. The default is False.
 
         Returns
         -------
-        None.
+        matplotlib.figure or None
+            If return_fig is True, the function returns the figure, otherwise
+            it returns None.
 
         """
         if not (self.__clusterpath or self.__clustering):
@@ -728,9 +761,17 @@ class CCMM:
         plt.yticks([])
         plt.ylabel("$x_2$")
         plt.gca().set_aspect("equal")
+
+        # Grab the figure
+        if return_figure:
+            fig = plt.gcf()
+
+        # Show the figure
         plt.show()
 
-        return None
+        # Return the figure
+        if return_figure:
+            return fig
 
     def clusters(self, n_clusters, return_alternative=False):
         """Return a clustering of the data.
