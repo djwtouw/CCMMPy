@@ -24,7 +24,8 @@ class CCMM:
     Convex clustering is a method that applies shrinkage to cluster centroids
     that represent the objects in the data. More shrinkage is applied if the
     penalty parameter lambda is larger. When cluster centroids are equal, the
-    objects they represent belong to the same cluster.
+    objects they represent belong to the same cluster. For help on the 
+    constructor, see help(CCMM.__init__).
 
     Methods
     -------

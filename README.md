@@ -1,5 +1,6 @@
 
 
+
 # CCMMPy
 CCMMPy implements convex clustering using the minimization algorithm presented in the paper _Convex Clustering through MM: An Efficient Algorithm to Perform Hierarchical Clustering_ by D.J.W. Touw, P.J.F. Groenen, and Y. Terada. For issues, please use [Github Issues](https://github.com/djwtouw/CCMMPy/issues).
 
@@ -25,6 +26,10 @@ To install CCMMPy, clone the repository and open a terminal in the top level dir
 ``` bash
 cd ccmmpy
 pip install .
+```
+Another option is to install the package directly from GitHub using
+``` bash
+pip install "ccmmpy @ git+https://github.com/djwtouw/CCMMPy#subdirectory=ccmmpy"
 ```
 
 ## Examples
