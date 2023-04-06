@@ -11,7 +11,17 @@ X = np.genfromtxt("data/data.csv", delimiter=",")
 W = SparseWeights(X, k=8, phi=3)
 
 # Set a sequence for lambda
-lambdas = np.arange(0, 250, 0.2)
+lambdas = np.arange(0, 350, 0.1)
+
+# Compute the clusterpath given the lambdas
+clust = CCMM(X, W).convex_clusterpath(lambdas)
+
+# Plot the clusterpath and color the observations for the solution with four
+# clusters
+clust.plot_clusterpath(n_clusters=4)
+
+# Change phi
+W.phi = 4.5
 
 # Compute the clusterpath given the lambdas
 clust = CCMM(X, W).convex_clusterpath(lambdas)
@@ -21,7 +31,10 @@ clust = CCMM(X, W).convex_clusterpath(lambdas)
 clust.plot_clusterpath(n_clusters=4)
 
 # Get the cluster membership vector
-labels = clust.clusters(90)
+labels = clust.clusters(4)
+
+# Fails
+labels = clust.clusters(93)
 
 # %%
 

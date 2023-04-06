@@ -38,6 +38,8 @@ class CCMM:
         Plot the clusterpath dendrogram.
     scatter()
         Plot a scatterplot.
+    clusters() : numpy.ndarray of shape (n_samples,)
+        Return a clustering of the data.
 
     """
 
@@ -51,10 +53,10 @@ class CCMM:
 
         Parameters
         ----------
-        X : numpy 2D array
-            The n x p data matrix for which a sparse weight matrix should be
-            constructed. Assumes that each row of X represents an object in the
-            data. Should be the same matrix that is used in SparseWeights().
+        X : numpy.ndarray of shape (n_samples, n_features)
+            The 2D data matrix for which convex clustering should be performed.
+            Assumes that each row of X represents an object in the data. Should
+            be the same matrix that is used to compute the weights.
         weights : SparseWeights
             The sparse weights used in the penalty term that applies shrinkage.
         tau : double, optional
@@ -242,7 +244,7 @@ class CCMM:
 
         Parameters
         ----------
-        lambdas : numpy 1D array
+        lambdas : numpy.ndarray of shape (n_lambdas,)
             A vector containing the values for the penalty parameter.
         save_clusterpath : bool, optional
             If True, store the solution that minimized the loss function for
@@ -758,9 +760,9 @@ class CCMM:
 
         Returns
         -------
-        clusters : numpy 1D array
+        clusters : numpy.ndarray of shape (n_samples,)
             A vector of cluster membership information. Observations that
-            belong to the same cluster, receive the same label.
+            belong to the same cluster receive the same label.
 
         """
         if not (self.__clustering or self.__clusterpath):

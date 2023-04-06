@@ -1,13 +1,16 @@
 
+
 # CCMMPy
 CCMMPy implements convex clustering using the minimization algorithm presented in the paper _Convex Clustering through MM: An Efficient Algorithm to Perform Hierarchical Clustering_ by D.J.W. Touw, P.J.F. Groenen, and Y. Terada. For issues, please use [Github Issues](https://github.com/djwtouw/CCMMPy/issues).
 
 There is also an [R package](https://github.com/djwtouw/CCMMR) available.
 
 ## Contents
-[Installation](#installation)
-
-[Examples](#examples)
+- [Installation](#installation)
+- [Examples](#examples)
+	* [Example 1: Computation of a clusterpath](#example-1-computation-of-a-clusterpath)
+	* [Example 2: Connectedness of the weights](#example-2-connectedness-of-the-weights)
+	* [Example 3: Searching for a number of clusters](#example-3-searching-for-a-number-of-clusters)
 
 ## Installation
 CCMMPy has the following dependencies:
@@ -31,7 +34,7 @@ import numpy as np
 from ccmmpy import SparseWeights, CCMM
 ```
 ### Example 1: Computation of a clusterpath
-After loading the data, a sparse weight matrix is constructed based on the `k=8` nearest neighbors. This means that nonzero weights are computed only for pairs of objects that are _k_ nearest neighbors of each other. By default, the weight matrix is constructed so that every observation is (in)directly connected to all other observations via nonzero weights. This ensures that the minimum number of clusters is one. To turn off this behavior, set `connected=False`. 
+After loading the data, a sparse weight matrix is constructed based on the `k=8` nearest neighbors. This means that nonzero weights are computed only for pairs of objects that are _k_ nearest neighbors of each other. By default, the weight matrix is constructed so that every observation is (in)directly connected to all other observations via nonzero weights. This ensures that the minimum number of clusters is one. To turn off this behavior, set `connected=False`. Finally, `phi` determines how quickly the weights decay to zero as the distance between `X[i, :]` and `X[j, :]` increases.
 
 ```Python
 # Load data
@@ -43,14 +46,25 @@ W = SparseWeights(X, k=8, phi=3)
 Next, a sequence of values for $\lambda$ is chosen for which the convex clustering loss function should be minimized.
 ```Python
 # Set a sequence for lambda
-lambdas = np.arange(0, 250, 0.2)
+lambdas = np.arange(0, 350, 0.1)
+
+# Compute the clusterpath given the lambdas
+clust = CCMM(X, W).convex_clusterpath(lambdas)
+```
+A clusterpath can be visualized in 2D with the next line of code. In this example the observations are colored based on the solution with four clusters.
+```Python
+# Plot the clusterpath and color the observations for the solution with four
+# clusters
+clust.plot_clusterpath(n_clusters=4)
+```
+The value for `phi` can be changed on the fly: when setting it to a new value, the weight matrix is automatically updated. The same is true for `k` and `connected`. After running the following bit of code, we can see that the clusterpath is altered slightly in comparison to the previous clusterpath that was computed with `phi=3`.
+```Python
+# Change phi
+W.phi = 4.5
 
 # Compute the clusterpath given the lambdas
 clust = CCMM(X, W).convex_clusterpath(lambdas)
 
-```
-A clusterpath can be visualized in 2D with the next line of code. In this example the observations are colored based on the solution with four clusters.
-```Python
 # Plot the clusterpath and color the observations for the solution with four
 # clusters
 clust.plot_clusterpath(n_clusters=4)
@@ -61,7 +75,7 @@ To get a cluster membership vector for a particular number of clusters, there mu
 labels = clust.clusters(4)
 
 # Fails
-labels = clust.clusters(90)
+labels = clust.clusters(93)
 ```
 
 ### Example 2: Connectedness of the weights

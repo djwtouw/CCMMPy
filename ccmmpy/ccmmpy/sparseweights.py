@@ -9,17 +9,37 @@ class SparseWeights:
     """A sparse weight matrix class.
 
     Stores sparse weight matrices used for convex clustering in a dictionary of
-    keys format.
+    keys format. For help on the constructor, see help(SparseWeights.__init__).
 
+    Attributes
+    ----------
+    k : int
+        The number of nearest neighbors to use when determining which
+        weights should be nonzero.
+    phi : float
+        Tuning parameter of the Gaussian weights. Input should be a
+        nonnegative value.
+    connected : bool
+        If True, guarantee a connected structure of the weight matrix by
+        using a symmetric circulant matrix to add nonzero weights. This
+        ensures that groups of observations that would not be connected
+        through weights that are based only on the k nearest neighbors are
+        (indirectly) connected anyway. The default is True.
 
     Methods
     -------
-    indices()
+    indices() : numpy.ndarray of shape (n_nonzero, 2)
         Return the indices of the nonzero weights.
-    values()
+    values() : numpy.ndarray of shape (n_nonzero,)
         Return the values of the nonzero weights.
-    to_dense()
-        Transform the sparse weight matrix into a dense weight matrix.
+    to_dense() : numpy.ndarray (n_samples, n_samples)
+        Convert the sparse weight matrix into a dense weight matrix.
+
+    Notes
+    -----
+    The weight matrix is computed using the Euclidean distance measure and an
+    exponentially decaying kernel function: 
+        w_ij = exp(-phi * ||x_i - x_j||^2).
 
     """
 
@@ -33,8 +53,8 @@ class SparseWeights:
 
         Parameters
         ----------
-        X : numpy 2D array
-            The n x p data matrix for which a sparse weight matrix should be
+        X : numpy.ndarray of shape (n_samples, n_features)
+            The 2D data matrix for which a sparse weight matrix should be
             constructed. Assumes that each row of X represents an object in the
             data.
         k : int
@@ -69,30 +89,47 @@ class SparseWeights:
         n = X.shape[0]
 
         # Construct KD tree
-        kdt = KDTree(X, leaf_size=30, metric="euclidean")
+        self.__kdt = KDTree(X, leaf_size=30, metric="euclidean")
 
+        # Store variables required for the computation of the weights
+        self.__phi = phi
+        self.__k = k
+        self.__connected = connected
+        self.__scale = scale
+
+        # Compute keys, squared distances, and values
+        self.__compute_weights()
+
+        # Store number of observations, used to convert to a dense weight
+        # matrix
+        self.__n_obs = n
+
+    def __compute_weights(self):
         # Query for knn
-        distances, indices = kdt.query(X, k=k+1, return_distance=True)
+        distances, indices = self.__kdt.query(self.__kdt.data, k=self.__k+1,
+                                              return_distance=True)
 
         # Transform the indices of the k-nn into a dictionary of keys sparse
         # matrix
-        res = _sparse_weights(X.T, indices.T, distances.T, phi, k, connected,
-                              scale)
+        res = _sparse_weights(np.array(self.__kdt.data).T, indices.T,
+                              distances.T, self.__phi, self.__k,
+                              self.__connected, self.__scale)
         keys = res["keys"].T
-        values = res["values"]
+        sqdists = res["values"]
 
         # Unique keys
         keys, u_idx = np.unique(keys, axis=0, return_index=True)
-        values = values[u_idx]
+        sqdists = sqdists[u_idx]
 
         # Swap the columns of the keys to switch to col-major order
         keys = keys[:, ::-1]
 
-        # Store variables
+        # Store keys, squared distances, and values
         self.__keys = keys
-        self.__values = values
-        self.__n_obs = n
-        self.__phi = phi
+        self.__sqdists = sqdists
+        self.__values = np.exp(-self.__phi * sqdists)
+
+        return None
 
     @property
     def phi(self):
@@ -102,11 +139,58 @@ class SparseWeights:
 
     @phi.setter
     def phi(self, val):
+        # If no change is made, instantly return
+        if val == self.__phi:
+            return
+
         # Input checks
         _check_scalar(val, False, "phi")
 
-        # Set the new value
+        # Set the new value and the new weights
         self.__phi = val
+        self.__values = np.exp(-val * self.__sqdists)
+
+    @property
+    def k(self):
+        """Get or set the value for k. Setting k to a new value automatically
+        computes the new values for the weights."""
+        return self.__k
+
+    @k.setter
+    def k(self, val):
+        # If no change is made, instantly return
+        if val == self.__k:
+            return
+
+        # Input checks
+        _check_int(val, True, "k")
+
+        # Set the new value
+        self.__k = val
+
+        # Compute new keys, squared distances, and values
+        self.__compute_weights()
+
+    @property
+    def connected(self):
+        """Get or set the value for connected. Setting connected to a new value
+        automatically computes the new values for the weights."""
+        return self.__connected
+
+    @connected.setter
+    def connected(self, val):
+        # If no change is made, instantly return
+        if val == self.__connected:
+            return
+
+        # Input checks
+        _check_boolean(val, "connected")
+
+        # Set the new value
+        self.__connected = val
+
+        # Compute new keys, squared distances, and values
+        self.__compute_weights()
 
     def indices(self):
         """Return the indices of the nonzero weights.
@@ -116,7 +200,7 @@ class SparseWeights:
 
         Returns
         -------
-        indices : numpy 2D array
+        indices : numpy.ndarray of shape (n_nonzero, 2)
             The matrix of indices.
 
         """
@@ -131,21 +215,21 @@ class SparseWeights:
 
         Returns
         -------
-        values : numpy 1D array
+        values : numpy.ndarray of shape (n_nonzero,)
             The vector of weights.
 
         """
-        return np.exp(-self.__phi * self.__values)
+        return self.__values.copy()
 
     def to_dense(self):
-        """Transform the sparse weight matrix into a dense weight matrix.
+        """Convert the sparse weight matrix into a dense weight matrix.
 
         Construct the dense version of the weight matrix.
 
 
         Returns
         -------
-        weights : numpy 2D array
+        weights : numpy.ndarray of shape (n_samples, n_samples)
             Dense weight n x n weight matrix, where n is the number of objects
             in the data on which the weight matrix is based.
 
