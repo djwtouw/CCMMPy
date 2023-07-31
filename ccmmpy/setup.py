@@ -20,7 +20,7 @@ ext_modules = [
 
 setup(
     name=package_name,
-    version="0.1.1",
+    version="0.2",
     description=("Implementation of the CCMM algorithm to minimize the convex "
                  "clustering loss function."),
     author="D.J.W. Touw",

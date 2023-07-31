@@ -8,5 +8,5 @@ pybind11::dict sparse_weights(const Eigen::MatrixXd& X,
                               const Eigen::MatrixXd& distances,
                               const double phi,
                               const int k,
-                              const bool connected,
+                              const bool sym_circ,
                               const bool scale);

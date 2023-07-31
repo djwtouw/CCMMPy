@@ -3,7 +3,7 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-CCMMPy implements convex clustering using the minimization algorithm presented in the paper _Convex Clustering through MM: An Efficient Algorithm to Perform Hierarchical Clustering_ by D.J.W. Touw, P.J.F. Groenen, and Y. Terada. For issues, please use [Github Issues](https://github.com/djwtouw/CCMMPy/issues).
+`CCMMPy` implements convex clustering using the minimization algorithm presented in the paper _Convex Clustering through MM: An Efficient Algorithm to Perform Hierarchical Clustering_ by D.J.W. Touw, P.J.F. Groenen, and Y. Terada. For issues, please use [Github Issues](https://github.com/djwtouw/CCMMPy/issues).
 
 There is also an [R package](https://github.com/djwtouw/CCMMR) available.
 
@@ -16,7 +16,7 @@ There is also an [R package](https://github.com/djwtouw/CCMMR) available.
 - [Dependencies and Licenses](#dependencies-and-licenses)
 
 ## Installation
-CCMMPy has the following dependencies:
+`CCMMPy` has the following dependencies:
 - matplotlib
 - numpy
 - pandas
@@ -24,7 +24,7 @@ CCMMPy has the following dependencies:
 - scikit-learn
 - seaborn
 
-To install CCMMPy, clone the repository and open a terminal in the top level directory and run
+To install `CCMMPy`, clone the repository and open a terminal in the top level directory and run
 ``` bash
 cd ccmmpy
 pip install .
@@ -35,7 +35,7 @@ pip install "ccmmpy @ git+https://github.com/djwtouw/CCMMPy#subdirectory=ccmmpy"
 ```
 
 ## Examples
-The following examples are also present in `examples.py`. Start with the necessary imports.
+The code for the following examples is also present in `examples.py`. Start with the necessary imports.
 ```Python
 import numpy as np
 from ccmmpy import SparseWeights, CCMM
@@ -66,7 +66,7 @@ clust.plot_clusterpath(n_clusters=4)
 ```
 <img src="./inst/doc/repo_plots/clusterpath_1.svg" width="67%" style="display: block; margin: auto;" />
 
-The value for `phi` can be changed on the fly: when setting it to a new value, the weight matrix is automatically updated. The same is true for `k` and `connected`. After running the following bit of code, we can see that the clusterpath is altered slightly in comparison to the previous clusterpath that was computed with `phi=3`.
+The value for `phi` can be changed on the fly: when setting it to a new value, the weight matrix is automatically updated. The same is true for `k`, `connected`, and `connection_type`. After running the following bit of code, we can see that the clusterpath is altered slightly in comparison to the previous clusterpath that was computed with `phi=3`.
 ```Python
 # Change phi
 W.phi = 4.5
@@ -100,7 +100,7 @@ X = np.random.rand(10, 2)
 W = SparseWeights(X, k=2, phi=3, connected=False)
 
 # Set a sequence for lambda
-lambdas = np.arange(0, 40, 0.05)
+lambdas = np.arange(0, 60, 0.05)
 
 # Compute the clusterpath given the lambdas
 clust = CCMM(X, W).convex_clusterpath(lambdas)
@@ -108,7 +108,7 @@ clust = CCMM(X, W).convex_clusterpath(lambdas)
 In the following clusterpath the nonzero weights are drawn as dashed lines between the objects. There are two groups that are not connected, which causes the minimum number of clusters to be two.
 ```Python
 # Plot the clusterpath and draw nonzero weights
-clust.plot_clusterpath(draw_nz_weights=True)
+clust.plot_clusterpath(n_clusters=2, draw_nz_weights=True)
 ```
 <img src="./inst/doc/repo_plots/clusterpath_3.svg" width="50%" style="display: block; margin: auto;" />
 
@@ -118,6 +118,35 @@ A scatter plot can also be drawn, which leaves out the clusterpath trails.
 clust.scatter(n_clusters=2, draw_nz_weights=True)
 ```
 <img src="./inst/doc/repo_plots/scatter_1.svg" width="50%" style="display: block; margin: auto;" />
+
+The default option is to ensure a connected weight matrix via a symmetric circulant matrix. This method connects each object $i$ with $i+1$, guaranteeing that there is a path between all objects. Setting `W.connected = True` automatically performs the required operations to obtain a connected weight matrix.
+```Python
+# Set connected to true, defaults to using a symmetric circulant matrix to
+# ensure connectedness
+W.connected = True
+
+# Compute the clusterpath again
+clust = CCMM(X, W).convex_clusterpath(lambdas)
+
+# Plot the clusterpath and draw nonzero weights
+clust.scatter(n_clusters=2, draw_nz_weights=True)
+```
+The clusterpath below shows which nonzero weights were added to the weight matrix. Although it may look messy at first glance, the result of this approach is comparable to the disconnected weight matrix. If the clusterpath result is queried for a solution with two clusters, the same two are returned as by the clusterpath that used the disconnected weight matrix. The main difference is that in this case, it is possible to also to ask for fewer than two clusters.
+<img src="./inst/doc/repo_plots/clusterpath_4.svg" width="50%" style="display: block; margin: auto;" />
+
+A more advanced method of adding nonzero weights involves a minimum spanning tree. At the cost of a higher computational burden, the minimum number of nonzero weights that ensures a connected weight matrix can be added. It is easy to change the method used to obtain a connected weight matrix by modifying the `connection_type` attribute. Switching back to the symmetric circulant approach can be achieved by the command `W.connection_type = "SC"`.
+```Python
+# Change the method to MST
+W.connection_type = "MST"
+
+# Compute the clusterpath again
+clust = CCMM(X, W).convex_clusterpath(lambdas)
+
+# Plot the clusterpath and draw nonzero weights
+clust.scatter(n_clusters=2, draw_nz_weights=True)
+```
+Similar to the clusterpath that used the symmetric circulant matrix, the minimum spanning tree approach is also able to deliver the same two clusters as in the disconnected case while being able to reduce the number of clusters below that.
+<img src="./inst/doc/repo_plots/clusterpath_5.svg" width="50%" style="display: block; margin: auto;" />
 
 ### Example 3: Searching for a number of clusters
 So far, the choice for $\lambda$ has determined what the number of clusters was going to be. However, it can be difficult to guess in advance what value for $\lambda$ corresponds to a particular number of clusters. The following code looks for clusterings in a specified range. If the lower and upper bounds are equal, just a single clustering is looked for.
