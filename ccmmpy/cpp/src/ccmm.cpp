@@ -94,6 +94,30 @@ struct CCMMVariables {
     int n_iterations = 0;
 
 
+    void update_distances()
+    {
+        // Compute the pairwise distances
+        for (int j = 0; j < D.outerSize(); j++) {
+            for (Eigen::SparseMatrix<double>::InnerIterator it(D, j); it; ++it) {
+                int i = int(it.row());
+                if (i == j) continue;
+
+                it.valueRef() = (M.col(i) - M.col(j)).norm();
+            }
+        }
+    }
+
+
+    void set_distances()
+    {
+        // Copy UWU to get the same sparsity structure
+        D = UWU;
+
+        // Compute the pairwise distances
+        update_distances();
+    }
+
+
     CCMMVariables(const Eigen::MatrixXd& X,
                   const Eigen::SparseMatrix<double>& W) : M(X), XU(X), UWU(W)
     {
@@ -116,30 +140,10 @@ struct CCMMVariables {
 
         // Initialize merge height vector
         merge_height = Eigen::ArrayXd(n - 1);
-    }
-    
-    
-    void update_distances()
-    {
-        // Compute the pairwise distances
-        for (int j = 0; j < D.outerSize(); j++) {
-            for (Eigen::SparseMatrix<double>::InnerIterator it(D, j); it; ++it) {
-                int i = int(it.row());
-                if (i == j) continue;
 
-                it.valueRef() = (M.col(i) - M.col(j)).norm();
-            }
-        }
-    }
-
-
-    void set_distances()
-    {
-        // Copy UWU to get the same sparsity structure
-        D = UWU;
-
-        // Compute the pairwise distances
-        update_distances();
+        // Compute the relevant distances based on the nonzero elements of the
+        // weight matrix
+        set_distances();
     }
 
 
@@ -406,10 +410,6 @@ struct CCMMVariables {
 
     void minimize(const CCMMConstants& constants, double lambda)
     {
-        // Compute the relevant distances based on the nonzero elements of the
-        // weight matrix
-        set_distances();
-        
         // Preliminaries
         int iter = 0;
         double loss_1 = loss_fusions(constants, lambda);
