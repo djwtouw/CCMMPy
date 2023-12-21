@@ -19,24 +19,7 @@ ext_modules = [
 ]
 
 setup(
-    name=package_name,
-    version="0.1.1",
-    description=("Implementation of the CCMM algorithm to minimize the convex "
-                 "clustering loss function."),
-    author="D.J.W. Touw",
-    author_email="touw@ese.eur.nl",
     ext_modules=ext_modules,
     packages=[package_name],
-    setup_requires=[
-        "pybind11>=2.10",
-    ],
-    install_requires=[
-        "matplotlib>=3.7",
-        "numpy>=1.23",
-        "pandas>=1.5",
-        "pybind11>=2.10",
-        "scikit-learn>=1.2",
-        "seaborn>=0.12",
-    ],
     zip_safe=False
 )

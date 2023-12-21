@@ -8,24 +8,18 @@
 pybind11::dict sparse_weights(const Eigen::MatrixXd& X,
                               const Eigen::MatrixXi& indices,
                               const Eigen::MatrixXd& distances,
-                              const double phi,
-                              const int k,
-                              const bool connected,
-                              const bool scale)
+                              double phi,
+                              int k,
+                              bool sym_circ,
+                              bool scale)
 {
     // Preliminaries
     int n = int(X.cols());
 
-    // Array of keys and values
-    Eigen::ArrayXXi keys;
-    Eigen::ArrayXd values;
-    if (connected) {
-        keys = Eigen::ArrayXXi(2, 2 * (k + 2) * n);
-        values = Eigen::ArrayXd(2 * (k + 2) * n);
-    } else {
-        keys = Eigen::ArrayXXi(2, 2 * (k + 1) * n);
-        values = Eigen::ArrayXd(2 * (k + 1) * n);
-    }
+    // Array of keys and values, 2*(k+2)*n is a loose upper bound on the number
+    // of nonzero weights, trimming happens later
+    Eigen::ArrayXXi keys(2, 2 * (k + 2) * n);
+    Eigen::ArrayXd values(2 * (k + 2) * n);
 
     // Fill keys
     int key_count = 0;
@@ -45,8 +39,8 @@ pybind11::dict sparse_weights(const Eigen::MatrixXd& X,
         }
     }
 
-    // Apply connectedness
-    if (connected) {
+    // Apply symmetric circulant
+    if (sym_circ) {
         for (int i = 0; i < n; i++) {
             int j = (i + 1) % n;
             double d_ij = (X.col(i) - X.col(j)).norm();
@@ -89,6 +83,7 @@ pybind11::dict sparse_weights(const Eigen::MatrixXd& X,
     pybind11::dict res;
     res["keys"] = keys;
     res["values"] = values;
+	res["msd"] = msd;
 
     return res;
 }

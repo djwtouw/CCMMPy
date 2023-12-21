@@ -12,8 +12,7 @@ using namespace pybind11::literals;
 // the input to be already column major
 Eigen::SparseMatrix<double>
 sparse_from_dok(const Eigen::Matrix<int, 2, Eigen::Dynamic>& M_idx,
-                const Eigen::VectorXd& M_val, const int n_rows,
-                const int n_cols)
+                const Eigen::VectorXd& M_val, int n_rows, int n_cols)
 {
     Eigen::SparseMatrix<double> result(n_rows, n_cols);
 
@@ -36,7 +35,9 @@ sparse_from_dok(const Eigen::Matrix<int, 2, Eigen::Dynamic>& M_idx,
 
     // Insert the elements
     for (int i = 0; i < nnz; i++) {
-        result.insert(M_idx(0, i), M_idx(1, i)) = M_val(i);
+        if (M_idx(0, i) > M_idx(1, i)) {
+            result.insert(M_idx(0, i), M_idx(1, i)) = M_val(i);
+        }
     }
 
     // Compress
@@ -57,8 +58,8 @@ struct CCMMConstants {
 
     CCMMConstants(const Eigen::MatrixXd& X,
                   const Eigen::SparseMatrix<double>& W,
-                  const double eps_conv, const double eps_fusions,
-                  const int burn_in, const int max_iter, const bool scale) :
+                  double eps_conv, double eps_fusions, int burn_in, 
+                  int max_iter, bool scale) :
                   X(X), eps_conv(eps_conv), eps_fusions(eps_fusions),
                   burn_in(burn_in), max_iter(max_iter)
     {
@@ -79,6 +80,7 @@ struct CCMMVariables {
     Eigen::MatrixXd XU;
     Eigen::SparseMatrix<double> U;
     Eigen::SparseMatrix<double> UWU;
+    Eigen::SparseMatrix<double> D;
     Eigen::ArrayXd cluster_sizes;
 
     // Variables to construct the merge table
@@ -90,6 +92,30 @@ struct CCMMVariables {
     // Additional information
     double loss = 0;
     int n_iterations = 0;
+
+
+    void update_distances()
+    {
+        // Compute the pairwise distances
+        for (int j = 0; j < D.outerSize(); j++) {
+            for (Eigen::SparseMatrix<double>::InnerIterator it(D, j); it; ++it) {
+                int i = int(it.row());
+                if (i == j) continue;
+
+                it.valueRef() = (M.col(i) - M.col(j)).norm();
+            }
+        }
+    }
+
+
+    void set_distances()
+    {
+        // Copy UWU to get the same sparsity structure
+        D = UWU;
+
+        // Compute the pairwise distances
+        update_distances();
+    }
 
 
     CCMMVariables(const Eigen::MatrixXd& X,
@@ -114,6 +140,10 @@ struct CCMMVariables {
 
         // Initialize merge height vector
         merge_height = Eigen::ArrayXd(n - 1);
+
+        // Compute the relevant distances based on the nonzero elements of the
+        // weight matrix
+        set_distances();
     }
 
 
@@ -131,12 +161,18 @@ struct CCMMVariables {
 
         // Compute the penalty term
         for (int j = 0; j < UWU.outerSize(); j++) {
+            // Iterator for D
+            Eigen::SparseMatrix<double>::InnerIterator D_it(D, j);
+            
             for (Eigen::SparseMatrix<double>::InnerIterator it(UWU, j); it; ++it) {
                 int i = int(it.row());
 
-                if (i < j) {
-                    penalty += it.value() * (M.col(i) - M.col(j)).norm();
+                if (i > j) {
+                    penalty += it.value() * D_it.value();
                 }
+
+                // Continue iterator for D
+                ++D_it;
             }
         }
 
@@ -144,8 +180,8 @@ struct CCMMVariables {
     }
 
 
-    void update(const double kappa_eps, const double kappa_pen,
-                const double lambda, const int burn_in, const int iter)
+    void update(double kappa_eps, double kappa_pen, double lambda, int burn_in,
+                int iter)
     {
         // Due to Eigen following colmajor conventions, this function computes
         // the transpose of the update that is shown in the paper.
@@ -166,6 +202,9 @@ struct CCMMVariables {
         // gamma * abs(C) * M0 as D0 is twice the diagonal of C and all
         // off-diagonal elements of C are negative
         for (int j = 0; j < UWU.outerSize(); j++) {
+        // Iterator for D
+            Eigen::SparseMatrix<double>::InnerIterator D_it(D, j);
+            
             for (Eigen::SparseMatrix<double>::InnerIterator it(UWU, j); it; ++it) {
                 int i = int(it.row());
 
@@ -173,7 +212,7 @@ struct CCMMVariables {
                     double w_ij = it.value();
 
                     // Compute gamma * UWU_ij / ||m_i - m_j||
-                    double temp1 = (M.col(i) - M.col(j)).norm();
+                    double temp1 = D_it.value();
                     temp1 = gamma * w_ij / std::max(temp1, 1e-6);
 
                     for (int row = 0; row < p; row++) {
@@ -186,6 +225,9 @@ struct CCMMVariables {
                     diagonal(i) += temp1;
                     diagonal(j) += temp1;
                 }
+
+                // Continue iterator for D
+                ++D_it;
             }
         }
 
@@ -206,48 +248,39 @@ struct CCMMVariables {
 
         // Set new M
         M = M_update;
+
+        // Update pairwise distances
+        update_distances();
     }
 
 
-    Eigen::SparseMatrix<double> fusion_candidates(const double eps_fusions)
+    Eigen::SparseMatrix<double> fusion_candidates(double eps_fusions)
     {
         // Preliminaries
         int n = int(M.cols());
         int cluster = 1;
-        double eps_fus_sq = eps_fusions * eps_fusions;
         Eigen::ArrayXi cluster_membership = Eigen::ArrayXi::Zero(n);
-        // Eigen::ArrayXd distances = 2 * eps_fus_sq * Eigen::ArrayXd::Ones(n);
 
         // Find fusion candidates
         for (int j = 0; j < UWU.outerSize(); j++) {
             if (cluster_membership(j) == 0) {
                 cluster_membership(j) = cluster;
                 cluster++;
+                
+                // Iterator for D
+                Eigen::SparseMatrix<double>::InnerIterator D_it(D, j);
 
                 for (Eigen::SparseMatrix<double>::InnerIterator it(UWU, j); it; ++it) {
                     int i = int(it.row());
 
-                    /* Alternative way of finding fusion candidates, allows
-                     * "stealing" of a row of M if a later evaluated distance
-                     * is found to be smaller. Positive effect appears to be
-                     * negligible, requires further testing
-                    if (j != i) {
-                        double d_ij = (M.col(i) - M.col(j)).squaredNorm();
-
-                        if ((d_ij <= eps_fus_sq) && (d_ij < distances(i))) {
-                            cluster_membership(i) = cluster_membership(j);
-                            distances(i) = d_ij;
-                        }
-                    }*/
-
-                    // Same approach as CCMMR
                     if (i > j) {
-                        double d_ij = (M.col(i) - M.col(j)).squaredNorm();
-
-                        if (d_ij <= eps_fus_sq) {
+                        if (D_it.value() <= eps_fusions) {
                             cluster_membership(i) = cluster_membership(j);
                         }
                     }
+
+                    // Continue iterator for D
+                    ++D_it;
                 }
             }
         }
@@ -262,19 +295,24 @@ struct CCMMVariables {
         // Construct the new membership matrix
         Eigen::SparseMatrix<double> result(n, cluster - 1);
         result.setFromTriplets(elements.begin(), elements.end());
-		result.makeCompressed();
+        result.makeCompressed();
 
         return result;
     }
 
 
-    bool fuse(const double eps_fusions, const double lambda)
+    bool fuse(double eps_fusions, double lambda)
     {
         auto U_new = fusion_candidates(eps_fusions);
 
         if (U_new.rows() > U_new.cols()) {
-            // Simple updates of variables
+            // Computation of updated lower triangular part of UWU
             UWU = U_new.transpose() * UWU * U_new;
+            Eigen::SparseMatrix<double> lt = UWU.triangularView<Eigen::Lower>();
+            Eigen::SparseMatrix<double> utt = UWU.triangularView<Eigen::Upper>().transpose();
+            UWU = lt + utt;
+
+            // Update of XU
             XU = XU * U_new;
 
             // New cluster sizes and new M
@@ -361,13 +399,16 @@ struct CCMMVariables {
             // Set M and cluster_sizes to their updates
             M = M_new;
             cluster_sizes = cluster_sizes_new;
+            
+            // Set distances based on the new clusters
+            set_distances();
         }
 
         return U_new.rows() > U_new.cols();
     }
 
 
-    void minimize(const CCMMConstants& constants, const double lambda)
+    void minimize(const CCMMConstants& constants, double lambda)
     {
         // Preliminaries
         int iter = 0;
@@ -435,8 +476,8 @@ struct CCMMResults {
     Eigen::ArrayXd height;
     int merge_index;
 
-    CCMMResults(const int n_obs, const int n_vars, const int n_lambdas,
-                const bool save_clusterpath) : save_clusterpath(save_clusterpath)
+    CCMMResults(int n_obs, int n_vars, int n_lambdas, bool save_clusterpath) :
+                save_clusterpath(save_clusterpath)
     {
         merge = Eigen::ArrayXXi(2, n_obs - 1);
         height = Eigen::ArrayXd(n_obs - 1);
@@ -450,7 +491,7 @@ struct CCMMResults {
         }
     }
 
-    void add_results(const CCMMVariables& variables, const double lambda)
+    void add_results(const CCMMVariables& variables, double lambda)
     {
         if (save_clusterpath) {
             int start_idx = info_index * int(variables.U.rows());
@@ -494,12 +535,12 @@ convex_clusterpath(const Eigen::MatrixXd& X,
                    const Eigen::Matrix<int, 2, Eigen::Dynamic>& W_idx,
                    const Eigen::VectorXd& W_val,
                    const Eigen::VectorXd& lambdas,
-                   const double eps_conv,
-                   const double eps_fusions,
-                   const bool scale,
-                   const bool save_clusterpath,
-                   const int burnin_iter,
-                   const int max_iter_conv)
+                   double eps_conv,
+                   double eps_fusions,
+                   bool scale,
+                   bool save_clusterpath,
+                   int burnin_iter,
+                   int max_iter_conv)
 {
     // Number of observations to clusters
     int n_obs = int(X.cols());
@@ -543,19 +584,19 @@ pybind11::dict
 convex_clustering(const Eigen::MatrixXd& X,
                   const Eigen::Matrix<int, 2, Eigen::Dynamic>& W_idx,
                   const Eigen::VectorXd& W_val,
-                  const double eps_conv,
-                  const double eps_fusions,
-                  const bool scale,
-                  const bool save_clusterpath,
-                  const int burnin_iter,
-                  const int max_iter_conv,
-                  const int target_low,
-                  const int target_high,
-                  const int max_iter_phase_1,
-                  const int max_iter_phase_2,
-                  const int verbose,
-                  const double lambda_init,
-                  const double factor)
+                  double eps_conv,
+                  double eps_fusions,
+                  bool scale,
+                  bool save_clusterpath,
+                  int burnin_iter,
+                  int max_iter_conv,
+                  int target_low,
+                  int target_high,
+                  int max_iter_phase_1,
+                  int max_iter_phase_2,
+                  int verbose,
+                  double lambda_init,
+                  double factor)
 {
     // Number of observations to clusters
     int n_obs = int(X.cols());

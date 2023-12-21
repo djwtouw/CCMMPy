@@ -1,8 +1,8 @@
 import numpy as np
 from sklearn.neighbors import KDTree
-from ._ccmmpy import _sparse_weights
+from ._ccmmpy import _sparse_weights, _find_mst, _find_subgraphs
 from ._input_checks import (_check_array, _check_scalar, _check_boolean,
-                            _check_int)
+                            _check_int, _check_string_value)
 
 
 class SparseWeights:
@@ -43,7 +43,8 @@ class SparseWeights:
 
     """
 
-    def __init__(self, X, k, phi, connected=True, scale=True):
+    def __init__(self, X, k, phi, connected=True, scale=True,
+                 connection_type="SC"):
         """Construct a sparse weight matrix.
 
         Constrcuct a sparse weight matrix in a dictionary-of-keys format. Each
@@ -64,14 +65,23 @@ class SparseWeights:
             Tuning parameter of the Gaussian weights. Input should be a
             nonnegative value.
         connected : bool, optional
-            If True, guarantee a connected structure of the weight matrix by
-            using a symmetric circulant matrix to add nonzero weights. This
-            ensures that groups of observations that would not be connected
-            through weights that are based only on the k nearest neighbors are
-            (indirectly) connected anyway. The default is True.
+            If True, guarantee a connected structure of the weight matrix
+            This ensures that groups of observations that would not be
+            connected through weights that are based only on the k nearest
+            neighbors are (indirectly) connected anyway. The method is
+            determined by the argument connection_type. Default is True.
         scale : bool, optional
             If True, scale each squared l2-norm by the mean squared l2-norm to
             ensure scale invariance of the weights. The default is True.
+        connection_type : string, optional
+            Determines the method to ensure a connected weight matrix if 
+            connected is True. Should be one of ["SC", "MST"]. SC stands for
+            the method using a symmetric circulant matrix, connecting objects i
+            with objects i+1 (and n with 1). MST stands for minimum spanning
+            tree. The graph that results from the nonzero weights determined by
+            the k nearest neighbors is divided into c subgraphs and a minimum
+            spanning tree algorithm is used to add c-1 nonzero weights to
+            ensure that all objects are indirectly connected. Default is "SC".
 
         Returns
         -------
@@ -83,6 +93,7 @@ class SparseWeights:
         _check_int(k, True, "k")
         _check_scalar(phi, False, "phi")
         _check_boolean(connected, "connected")
+        _check_string_value(connection_type, "connection_type", ["SC", "MST"])
         _check_boolean(scale, "scale")
 
         # Preliminaries
@@ -95,14 +106,15 @@ class SparseWeights:
         self.__phi = phi
         self.__k = k
         self.__connected = connected
+        self.__connection_type = connection_type
         self.__scale = scale
-
-        # Compute keys, squared distances, and values
-        self.__compute_weights()
 
         # Store number of observations, used to convert to a dense weight
         # matrix
         self.__n_obs = n
+
+        # Compute keys, squared distances, and values
+        self.__compute_weights()
 
     def __compute_weights(self):
         # Query for knn
@@ -111,13 +123,96 @@ class SparseWeights:
 
         # Transform the indices of the k-nn into a dictionary of keys sparse
         # matrix
-        res = _sparse_weights(np.array(self.__kdt.data).T, indices.T,
-                              distances.T, self.__phi, self.__k,
-                              self.__connected, self.__scale)
+        res = _sparse_weights(
+            np.array(self.__kdt.data).T, indices.T, distances.T, self.__phi,
+            self.__k, (self.__connection_type == "SC") and self.__connected,
+            self.__scale
+        )
         keys = res["keys"].T
         sqdists = res["values"]
 
-        # Unique keys
+        if self.__connection_type == "MST" and self.__connected:
+            # Use the keys of the sparse weight matrix to find clusters in the
+            # data
+            ids = _find_subgraphs(keys.T, self.__n_obs)
+
+            # The number of disconnected parts of the graph
+            n_clusters = max(ids) + 1
+
+            if n_clusters > 1:
+                # Array to keep track of which objects are responsible for
+                # those distances
+                closest_objects = np.zeros(
+                    (n_clusters * (n_clusters - 1) // 2, 2), dtype=int
+                )
+
+                # Matrix to keep track of the shortest distance between the
+                # clusters
+                D_between = np.zeros((n_clusters, n_clusters))
+
+                for a in range(n_clusters):
+                    kdt_a = KDTree(np.array(self.__kdt.data)[ids == a, :],
+                                   leaf_size=30, metric="euclidean")
+
+                    for b in range(a):
+                        # Find out which member of cluster a is closest to each
+                        # of the members of cluster b
+                        nn_between = kdt_a.query(
+                            np.array(self.__kdt.data)[ids == b, :], k=1,
+                            return_distance=True
+                        )
+
+                        # Get the indices of the objects with respect to their
+                        # cluster
+                        b_idx = np.argmin(nn_between[0])
+                        a_idx = nn_between[1][b_idx, 0]
+
+                        # Save the distance
+                        D_between[a, b] = nn_between[0][b_idx]
+                        D_between[b, a] = nn_between[0][b_idx]
+
+                        # Get the original indices of the objects
+                        a_idx = np.where(ids == a)[0][a_idx]
+                        b_idx = np.where(ids == b)[0][b_idx]
+
+                        # Store the objects
+                        idx = a * (a - 1) // 2 + b
+                        closest_objects[idx, :] = (a_idx, b_idx)
+
+                # Find minimum spanning tree for D_between
+                mst_keys = _find_mst(D_between)
+
+                # Array for the weights
+                mst_values = np.empty(mst_keys.shape[0])
+
+                # Get the true object indices from the closest_objects list
+                for i in range(mst_keys.shape[0]):
+                    # Get the index for the closest_objects list
+                    ii = min(mst_keys[i, 0], mst_keys[i, 1])
+                    jj = max(mst_keys[i, 0], mst_keys[i, 1])
+                    idx = jj * (jj - 1) // 2 + ii
+
+                    # Fill in the distances in the values vector
+                    mst_values[i] = D_between[mst_keys[i, 0], mst_keys[i, 1]]
+
+                    # Replace the cluster ids by the object ids
+                    mst_keys[i, :] = closest_objects[idx, :]
+
+                # Because both the upper and lower part of the weight matrix
+                # are stored, the key and value pairs are duplicated
+                mst_keys = np.r_[mst_keys, mst_keys[:, ::-1]]
+                mst_values = np.r_[mst_values, mst_values]
+
+                # Scale the squared distances
+                if self.__scale:
+                    mst_values = np.square(mst_values) / res["msd"]
+
+                # Append everything to the existing keys and values, ensuring a
+                # connected weight matrix based on a minimum spanning tree
+                keys = np.r_[keys, mst_keys]
+                sqdists = np.r_[sqdists, mst_values]
+
+        # Unique keys, also sorts
         keys, u_idx = np.unique(keys, axis=0, return_index=True)
         sqdists = sqdists[u_idx]
 
@@ -191,6 +286,29 @@ class SparseWeights:
 
         # Compute new keys, squared distances, and values
         self.__compute_weights()
+
+    @property
+    def connection_type(self):
+        """Get or set the value for connection_type. Setting connection_type to
+        a new value automatically computes the new values for the weights if
+        connected is true."""
+        return self.__connection_type
+
+    @connection_type.setter
+    def connection_type(self, val):
+        # If no change is made, instantly return
+        if val == self.__connection_type:
+            return
+
+        # Input checks
+        _check_string_value(val, "connection_type", ["SC", "MST"])
+
+        # Set the new value
+        self.__connection_type = val
+
+        # Compute new keys, squared distances, and values if connected is true
+        if self.__connected:
+            self.__compute_weights()
 
     def indices(self):
         """Return the indices of the nonzero weights.

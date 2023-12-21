@@ -3,4 +3,4 @@
 #include <pybind11/eigen.h>
 
 
-double fusion_threshold(const Eigen::MatrixXd X, const double tau);
+double fusion_threshold(const Eigen::MatrixXd X, double tau);

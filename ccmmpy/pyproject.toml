@@ -1,0 +1,22 @@
+[build-system]
+requires = [
+    "setuptools>=42",
+    "wheel",
+    "pybind11~=2.11",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ccmmpy"
+version = "0.2"
+description = "Implementation of the CCMM algorithm to minimize the convex clustering loss function."
+authors = [{name = "D.J.W. Touw", email = "touw@ese.eur.nl"}]
+requires-python = ">=3.9"
+license = {file = "LICENSE"}
+dependencies = [
+    "matplotlib>=3.5.3",
+    "numpy>=1.23",
+    "pandas>=1.5",
+    "scikit-learn>=1.2",
+    "seaborn>=0.12",
+]

@@ -97,7 +97,7 @@ def _check_boolean(boolean, input_name):
 def _check_string(string, input_name):
     if type(string) != str:
         raise TypeError(
-            "Expected bool, got {} instead: {}={}"
+            "Expected string, got {} instead: {}={}"
             .format(type(string).__name__, input_name, string)
         )
 
@@ -157,6 +157,18 @@ def _check_iterable(array, input_name):
         raise TypeError(
             "Expected an iterable object, got {} instead: {}={}"
             .format(array, input_name, array)
+        )
+
+    return None
+
+
+def _check_string_value(string, input_name, options):
+    _check_string(string, input_name)
+
+    if string not in options:
+        raise ValueError(
+            "Expected one of ['SC', 'MST'] for {}, got {} instead"
+            .format(input_name, string)
         )
 
     return None

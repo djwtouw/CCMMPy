@@ -81,7 +81,7 @@ double median_dist(const Eigen::MatrixXd& X)
 }
 
 
-double fusion_threshold(const Eigen::MatrixXd X, const double tau)
+double fusion_threshold(const Eigen::MatrixXd X, double tau)
 {
     double result = tau * median_dist(X);
 

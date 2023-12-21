@@ -46,17 +46,36 @@ X = np.random.rand(10, 2)
 W = SparseWeights(X, k=2, phi=3, connected=False)
 
 # Set a sequence for lambda
-lambdas = np.arange(0, 40, 0.01)
+lambdas = np.arange(0, 60, 0.01)
 
 # Compute the clusterpath given the lambdas
 clust = CCMM(X, W).convex_clusterpath(lambdas)
 
-# Plot the clusterpath and color the observations for the solution with four
-# clusters
-clust.plot_clusterpath(draw_nz_weights=True)
+# Plot the clusterpath and draw nonzero weights
+clust.plot_clusterpath(n_clusters=2, draw_nz_weights=True)
 
 # Scatter plot
 clust.scatter(n_clusters=2, draw_nz_weights=True)
+
+# Set connected to true, defaults to using a symmetric circulant matrix to
+# ensure connectedness
+W.connected = True
+
+# Compute the clusterpath again
+clust = CCMM(X, W).convex_clusterpath(lambdas)
+
+# Plot the clusterpath and draw nonzero weights
+clust.plot_clusterpath(n_clusters=2, draw_nz_weights=True)
+
+# Change the method to MST
+W.connection_type = "MST"
+
+# Compute the clusterpath again
+clust = CCMM(X, W).convex_clusterpath(lambdas)
+
+# Plot the clusterpath and draw nonzero weights
+clust.plot_clusterpath(n_clusters=2, draw_nz_weights=True)
+
 
 # %%
 
