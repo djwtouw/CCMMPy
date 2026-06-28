@@ -20,6 +20,7 @@ ext_modules = [
 
 setup(
     ext_modules=ext_modules,
-    packages=[package_name],
+    packages=[package_name, f"{package_name}.tests"],
+    package_data={f"{package_name}.tests": ["data/*.csv"]},
     zip_safe=False
 )

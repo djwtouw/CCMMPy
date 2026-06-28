@@ -24,9 +24,3 @@ dependencies = [
 [project.optional-dependencies]
 test = ["pytest>=7.0"]
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-# Make the in-tree package importable when running pytest from source (before
-# an editable/regular install). Resolved relative to this file's directory.
-pythonpath = ["."]
-

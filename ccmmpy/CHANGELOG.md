@@ -20,7 +20,8 @@
 + Switched the build in `setup.py` from the removed `distutils` to
   `setuptools`, so the extension builds on Python >= 3.12.
 
-+ Added regression tests (run with `pytest`). These use the same
++ Added regression tests that ship with the package and run against an
+  installed copy with `pytest --pyargs ccmmpy.tests`. These use the same
   `two_half_moons` data set as the R package and pin the same reference values.
 
 
