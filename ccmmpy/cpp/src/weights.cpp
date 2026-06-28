@@ -69,7 +69,10 @@ pybind11::dict sparse_weights(const Eigen::MatrixXd& X,
                 msd += (X.col(j) - X.col(i)).squaredNorm();
             }
         }
-        msd /= (n * (n - 1) / 2);
+        // Use floating-point arithmetic for the denominator to avoid integer
+        // overflow of n * (n - 1) for large n (e.g. n around one million)
+        double denom = 0.5 * static_cast<double>(n) * static_cast<double>(n - 1);
+        msd /= denom;
     }
 
     // Compute weights

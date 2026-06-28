@@ -167,9 +167,11 @@ class SparseWeights:
                         b_idx = np.argmin(nn_between[0])
                         a_idx = nn_between[1][b_idx, 0]
 
-                        # Save the distance
-                        D_between[a, b] = nn_between[0][b_idx]
-                        D_between[b, a] = nn_between[0][b_idx]
+                        # Save the distance (index the (n, 1) result down to a
+                        # scalar; assigning a size-1 array is an error on
+                        # NumPy >= 2.0)
+                        D_between[a, b] = nn_between[0][b_idx, 0]
+                        D_between[b, a] = nn_between[0][b_idx, 0]
 
                         # Get the original indices of the objects
                         a_idx = np.where(ids == a)[0][a_idx]
@@ -357,6 +359,6 @@ class SparseWeights:
 
         # Fill nonzero entries of the matrix
         for idx, w in zip(self.__keys, self.__values):
-            result[idx[0], idx[1]] = np.exp(-self.__phi * w)
+            result[idx[0], idx[1]] = w
 
         return result

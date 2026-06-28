@@ -17,7 +17,7 @@ double median(std::vector<double>& vec)
     if (vec.size() % 2 == 1) {
         result = vec[nth];
     } else {
-        double max = *std::max_element(vec.begin(), vec.begin() + nth - 1);
+        double max = *std::max_element(vec.begin(), vec.begin() + nth);
         result = 0.5 * (max + vec[nth]);
     }
 

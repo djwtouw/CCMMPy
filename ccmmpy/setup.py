@@ -1,6 +1,6 @@
 import os
 import pybind11
-from distutils.core import setup, Extension
+from setuptools import setup, Extension
 
 
 cpp_args = ["-std=c++11", "-DNDEBUG", "-O3", "-Wall"]
