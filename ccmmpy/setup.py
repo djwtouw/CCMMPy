@@ -1,6 +1,6 @@
 import os
 import pybind11
-from distutils.core import setup, Extension
+from setuptools import setup, Extension
 
 
 cpp_args = ["-std=c++11", "-DNDEBUG", "-O3", "-Wall"]
@@ -20,6 +20,7 @@ ext_modules = [
 
 setup(
     ext_modules=ext_modules,
-    packages=[package_name],
+    packages=[package_name, f"{package_name}.tests"],
+    package_data={f"{package_name}.tests": ["data/*.csv"]},
     zip_safe=False
 )
